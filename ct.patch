@@ -1,0 +1,2307 @@
+From a4ebd71f63e8cbeffe29ae6f6e21fee3e5288d4d Mon Sep 17 00:00:00 2001
+From: Ami Perlmutter <ami@communitake.com>
+Date: Sun, 19 Mar 2017 13:59:47 +0200
+Subject: [PATCH] manage via external service
+
+---
+ src/frontends/android/app/build.gradle             |  13 +-
+ .../src/berlian/res/drawable-hdpi/ic_launcher.png  | Bin 0 -> 3552 bytes
+ .../src/berlian/res/drawable-mdpi/ic_launcher.png  | Bin 0 -> 3552 bytes
+ .../src/berlian/res/drawable-xhdpi/ic_launcher.png | Bin 0 -> 3552 bytes
+ .../app/src/berlian/res/values-de/names.xml        |   5 +
+ .../app/src/berlian/res/values-pl/names.xml        |   5 +
+ .../app/src/berlian/res/values-ru/names.xml        |   5 +
+ .../app/src/berlian/res/values-ua/names.xml        |   5 +
+ .../android/app/src/berlian/res/values/names.xml   |   5 +
+ .../android/app/src/main/AndroidManifest.xml       |   6 +
+ .../strongswan/android/logic/CharonVpnService.java | 112 +++-
+ .../android/logic/StrongSwanApplication.java       |  41 ++
+ .../org/strongswan/android/logic/VpnService.java   | 643 +++++++++++++++++++++
+ .../strongswan/android/logic/VpnStateService.java  |  40 +-
+ .../android/security/LocalCertificateStore.java    |   4 +-
+ .../strongswan/android/ui/ImcStateFragment.java    |   5 +
+ .../org/strongswan/android/ui/MainActivity.java    |  43 +-
+ .../ui/RemediationInstructionsFragment.java        |   9 +-
+ .../android/ui/TrustedCertificateListFragment.java |   7 +-
+ .../android/ui/TrustedCertificatesActivity.java    |   3 +-
+ .../android/ui/VpnProfileDetailActivity.java       |  21 +
+ .../android/ui/VpnProfileListFragment.java         |   8 +-
+ .../strongswan/android/ui/VpnStateFragment.java    |   8 +-
+ .../android/app/src/main/jni/Application.mk        |   3 +-
+ .../app/src/main/res/drawable-hdpi/ic_launcher.png | Bin 4953 -> 1273 bytes
+ .../app/src/main/res/drawable-mdpi/ic_launcher.png | Bin 3149 -> 1273 bytes
+ .../src/main/res/drawable-xhdpi/ic_launcher.png    | Bin 6786 -> 1273 bytes
+ .../android/app/src/main/res/layout/main.xml       |   4 +-
+ .../android/app/src/main/res/menu/main.xml         |   5 +
+ .../android/app/src/main/res/values-de/names.xml   |   5 +
+ .../android/app/src/main/res/values-de/strings.xml |   4 +-
+ .../android/app/src/main/res/values-pl/names.xml   |   5 +
+ .../android/app/src/main/res/values-pl/strings.xml |   4 +-
+ .../android/app/src/main/res/values-ru/names.xml   |   5 +
+ .../android/app/src/main/res/values-ru/strings.xml |   4 +-
+ .../android/app/src/main/res/values-ua/names.xml   |   5 +
+ .../android/app/src/main/res/values-ua/strings.xml |   4 +-
+ .../android/app/src/main/res/values/colors.xml     |   4 +-
+ .../android/app/src/main/res/values/names.xml      |   5 +
+ .../android/app/src/main/res/values/strings.xml    |   4 +-
+ src/frontends/android/build.gradle                 |   2 +-
+ .../gradle/wrapper/gradle-wrapper.properties       |   4 +-
+ src/libstrongswan/Android.mk                       |   2 +-
+ src/libtnccs/Android.mk                            |   2 +-
+ 44 files changed, 976 insertions(+), 83 deletions(-)
+ create mode 100644 src/frontends/android/app/src/berlian/res/drawable-hdpi/ic_launcher.png
+ create mode 100644 src/frontends/android/app/src/berlian/res/drawable-mdpi/ic_launcher.png
+ create mode 100644 src/frontends/android/app/src/berlian/res/drawable-xhdpi/ic_launcher.png
+ create mode 100644 src/frontends/android/app/src/berlian/res/values-de/names.xml
+ create mode 100644 src/frontends/android/app/src/berlian/res/values-pl/names.xml
+ create mode 100644 src/frontends/android/app/src/berlian/res/values-ru/names.xml
+ create mode 100644 src/frontends/android/app/src/berlian/res/values-ua/names.xml
+ create mode 100644 src/frontends/android/app/src/berlian/res/values/names.xml
+ create mode 100644 src/frontends/android/app/src/main/java/org/strongswan/android/logic/VpnService.java
+ create mode 100644 src/frontends/android/app/src/main/res/values-de/names.xml
+ create mode 100644 src/frontends/android/app/src/main/res/values-pl/names.xml
+ create mode 100644 src/frontends/android/app/src/main/res/values-ru/names.xml
+ create mode 100644 src/frontends/android/app/src/main/res/values-ua/names.xml
+ create mode 100644 src/frontends/android/app/src/main/res/values/names.xml
+
+diff --git a/src/frontends/android/app/build.gradle b/src/frontends/android/app/build.gradle
+index 09c400d..5c6fcd3 100644
+--- a/src/frontends/android/app/build.gradle
++++ b/src/frontends/android/app/build.gradle
+@@ -5,7 +5,7 @@ android {
+     buildToolsVersion "23.0.3"
+ 
+     defaultConfig {
+-        applicationId "org.strongswan.android"
++        applicationId "org.strongswan.android.communitake"
+         minSdkVersion 15
+         targetSdkVersion 22
+         versionCode 31
+@@ -40,6 +40,17 @@ android {
+             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+         }
+     }
++
++    productFlavors {
++        communitake {
++            applicationId "org.strongswan.android.communitake"
++            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
++        }
++        berlian {
++            applicationId "org.strongswan.android.berlian"
++            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
++        }
++    }
+ }
+ 
+ dependencies {
+diff --git a/src/frontends/android/app/src/berlian/res/drawable-hdpi/ic_launcher.png b/src/frontends/android/app/src/berlian/res/drawable-hdpi/ic_launcher.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..e73828c66ab5ca9a1c2185fc153386ae4fb40278
+GIT binary patch
+literal 3552
+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
+CuMEln
+
+literal 0
+HcmV?d00001
+
+diff --git a/src/frontends/android/app/src/berlian/res/drawable-mdpi/ic_launcher.png b/src/frontends/android/app/src/berlian/res/drawable-mdpi/ic_launcher.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..e73828c66ab5ca9a1c2185fc153386ae4fb40278
+GIT binary patch
+literal 3552
+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
+CuMEln
+
+literal 0
+HcmV?d00001
+
+diff --git a/src/frontends/android/app/src/berlian/res/drawable-xhdpi/ic_launcher.png b/src/frontends/android/app/src/berlian/res/drawable-xhdpi/ic_launcher.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..e73828c66ab5ca9a1c2185fc153386ae4fb40278
+GIT binary patch
+literal 3552
+zcmbVPX*iU7AD(Pc)<GFd#>iI8YMZISn6V6zWo%`i#XiH#l)b}Pl87vILgI)RDkV#H
+zN>pegJ1w?z9HeAR^^S8+=Y2n%>wI{h>w5m%bKm!G{eO7Q+1Xl%?UCOD006{@mIMdh
+zY`OCa3-Ly$#TpCV1Y(=HvK<*TcDN6d3cyhqzEm(V#K({7K=q+ShCQYp1pxSI0VG$p
+ztIaVCnGpi@*}*^~LPB|L0N|)`M5qrrh{^{0QvCwxSjciy8w4Cc!9ra0Y~VJbc&dMZ
+zWfYU@7-dT$M+K456o|1A_-F)%ClEqq`+y@tg6S+w1Qzm#E{3<>Ifg;Ne?ZtlSjeAF
+zx!Tx)@eC#vtOtebkm33Wu)Z!7p$kXrqP4+DI06nsAYpI=9RwVsXMlktz<)guo;4<g
+zhH)U6|7DA}!$SPo>`)9079JiB4M#y4Og|U`jYh-ZNEi~S!$at>BI#_O2pu|0^@jq1
+z$|5rZLfHWfI(SFX$Cq)6jfL<${WFA+P#c@Sh3Txn62(gyEW#%ghJeChAt5_){efn&
+z9jO0x;~&v1Qe-F<=0IgJPBF>6deBsVka@ZLcSAcso;R4|%m7|de1ZuK@~IFiolPWQ
+zA-pe8N&p38h$I-8qIAvm&ERM=0|WwxGt@WJGesJraVUMHIpT-LKXFm!1f)3%tqaGY
+z@CbyN0UC$YGt<YTP;gTNLp;Lt2bV}^v3=-d>JPgCJiC8!QUA)t;F(k(HiJoGFoJ({
+zfSo^s&0zU6Lcw@PJtzX~5<sUg!dW}z`7>Gql^JlFN-<|LLco9I7ZdOg_Th#Eo{M_A
+zC{sA@pX2_MOZk6t2IDyc+i8yfX_g;Hybj!1{@wb#&EJ=YO6T1eChuyzlrP^60PK+@
+z5^$u5(P{U+B+{V#H)^t!y@|;*D0Riol%%V?VR}pR7th*Cw;ZZ<P0$mM3YQwB&5%u+
+zlhvgxVQW77`&u6Gb84khaz?1c(k#`K#}6E2t_h1zer5FcV*KQ2$>@wLZfAnNo=5v7
+zx2$jWf4k<l{HoNY4Uj1bB|MS_*;2q#5|D&*J(!J_)E)-mw{tmCXyWxu%LEet5@Z*y
+zB&8Pu?8}4*WLCvMrhr;^%sJyJ+Uh{-gO<|@b~uW}#e<Na+%ULSf-}&~<hp|8`LhIv
+zbHVBkYNQf<zS{SM>AjF#!lk@;MenVLtuO>R?5+%F7Ljm*+dXV00y<wFsqEKhke^y?
+zVWokT)mAv0(oEydW#<q7DhK(J67dOizq5beHXf@&A$ZNt%m~muFRUuQqkUCsc=Z90
+zL#?$t(=1OP(9atcn`~zhJRuI+U81J^%?TNpk&(mRzpqNlVHeTWPI5!NdNX1@&yI>Y
+z%`Mn0?jv*S<?!_8*3lzPr)SrdC5hAICeGO}og4`bd^?zt`8bX7=tb9oPRMpgO~zhQ
+zL5mQ#`)1kjSeta@vFny;pjFVtnHbWccS&|Bc?z$Wwr?6Qcii{l7Ts#xC7%*#Uq4)V
+zBw_>O_?e~g(}>9_>+jPR++=k=e7vkF@LrzfQDtUXtC3<SnS-9o%Rd2zy_YH2dK;cl
+zL!Zrm`+VYsEo<r9RrQUJ6YhaGjy;Sf=!+El`m^djs?2Ski<kTi44*C1A&$8ME<gQE
+z^xJnYz4Q-3#XxtgVn<(-PP08b7jII&A3Md3@_kaR4(#ZE_CZCsWpI~~{_c?Og~}4c
+zwX%B+KqT-?V%e8I^ZHjG=Mg!%r1)`Xq1Z1?uUOcEMqK>?j|v;46oPO;@_wLIQOYJs
+zed>)wi1?V}phrL)Ke0=_K0IO>)DXHQ(YI3FV}hxP5XimKTYEaMh^=0a1j&tw9$43&
+z8}IPYIJRP<7<2shOO0Yz#*@brRboDMul56Fp5|yos023~4-d0nD7su4!hP;qXvULQ
+zJ^g-atwJvu_g?18OAt^)!7?~#n)O`zHy@*d_bfGz+K63LmBS~H)9^L9;6h8vtqCyh
+zdwiXhGR*r)ky0DUYugddf#0P)7<-n>$foz!E~xcf4qMnhO!K^e;p=STNF^c$CdMSt
+zYqkLG=XFi`7(UY^N$jcGIsI2JtA2qT9DX#}dKUb^8Ll{gum@j0f`2N&gs#tY-;T@m
+z-Zl1c*gv*dl6!fpvflqfskmsH>e7T&oTBziCy6`_3hZaqSowP8Dw&=xp*7LYITG&m
+zX<3iOX<xm?XQ98S_!sI;&O)oer0Z_i?eDCZ)-O#wb7FIb?Hk=yHiA<fh7zi8#n`0m
+zL$JCVkN5Pn(yrJ`EMqyH1xU>&I{UdqW$ke9C&u{<>oXk(s{OypeE7)H%YQPG<(8;*
+z_Iwk+PW;h;*v|UL+5QO;#;|UysmjBu0f<Q;oHAY`xtY;ns;g($?;7kWd=1#EGWYQ9
+z`Ow*UH6k%=Y0+d*VX)wW77ehy8lp8dKj8&UjP~<;>1x$ygN1HZRa7(+7Y6nYnFVFd
+z`0+)*0`8R%C{Ep6QF6~HoWS(nEloUq^Kr4pvKrqR%gpS|gy2E4oQ0^u9*qnc6W{Ib
+z=VN^~p_~(&3e*t85z8<?DiYM(76Y38eMIa`>{k0>Sbs6$>k+yZyS~1D-kZecWX3f!
+z?s|`8b>(QTZH7;6?pNC*5*;YQTpE$?6iPb1f#u3`$Dc(`;ienHjw|CDGdHIgZ%%~h
+z%#Fttne>e2nhF{l4+<z@+ySbPk~b}%72eSJ!$-vXAq6(RAf}^mpsq!CpN>vuR;xnt
+zg^a}X{QCB*P2*9uqnRaP1|=#C0*Bihd3MP-0x&ZNYacWooqJkWS0^d=Mgkojj^9Xm
+zJ1gfY3nckKnT5(ofsbo`9fdg*VUYvRZN)VDe-<oUT7qjHOiUIYGqM4=?BB0-)-_&0
+zt5jXxP%|ZqGYuvNZ=Z+~FYAj1&B8qSo?dS5TZx19=Me{&(p`K@<+(tSL)m#ndWT(1
+z1`>t)(W`;q-Rt<&+u#be1xEZ*Wb+5T6^PX%qz+hknO)P&{2PFXf)PiVd3UT2BW0H?
+zAbWm<U*3yK&7E8xqNm;PTr^q2UHIxVR`EF>2xg9oS{>jUT$=AtO!2C}l%)<#y;vlV
+zSd;|9eYQl0bMIT+*sripN`zR^G=E2Bz@tr^O3@GFx7VnysgWknH_*z>J$kTw5Til=
+zz(9^ukTHi-V%)J`B>#=!6+uH)F1IqB&cFC9dEF%_O}GDvQ_v93{+xfQth?7utx-Rd
+zu~}*Rc%hBU(i$r3U$$*8CO83P^hWaQH9G31WlCsD5|nDyUx9a8+)gIONR}Nxmwff4
+zv`Tb1W@CM!K_;nA$OEfj$ZuiM-F_*A=$l<aF?@Sn9^|{$z*^X6`y2f9fTiX^EkW}q
+zjlsgBQ1<7rN@skM1JSq}>V6$nBonmeFP)QC=a@Qa{5^2@=VN=`RaA>IwT*9I9djX1
+z#Rtow&}9?BK-6B}27e35TPw$NeFXxpMEeXpeEgveAGtcb4pNpkr2THmrwoI^Q4Sy|
+zoA#-p`h;4S=5y-u#I?T1v%AGaRaW{~vj;5%Pn>@m!ru5sxnuEmaYiJ7IOe~&d!o*&
+zlrw$r_ODf0cDZa7(7o5k7NUw;l6%~r-zl=!^nO<XZ7ak??{kj%pyFP>F)_{^Y<F+!
+z;DEltZ9kmE(^BLu`)`h=58%6c3xh<a!IQg`@|Q4NO<&JU7-jj|L3$GC&TWUW>{i(M
+zGP(I;ZGlatB=pwnv^V<Z;}w3PM0oVYxK=TyoY~pr4B5p)wL?O3n*~*c_nogkcgcQ)
+zooA)31lBXgU&V;;`Sc>VGDm)N?0~%6`<L%)XX6ULt|dDw$)eW$n_89Ma>L!faoW?>
+ztl!;u5n?5=gw0A*oQj)N<b>|3kjm(IFPa;j=5{HGq1)d5N{L?nKrF1dWV^^KMFacD
+zY$Dt9K%jF;R?GXJRb)>-aL@OYYx0wIdlW0EdSt6(<|C%DLu@_t%EUWbVe-pgtXf9I
+z?=7|o77II^jA~YsX2)*M`|Ne9RR6d?e9{nO{iR&!@|4Hc&3$VO80TZw;jJ@`;-htB
+zc|pgzB$#h-mRd8lxF+D?*wsFnW07}LmA1u3t!iI$<Y~QEZA*^DuBO4zopXAE&L+0I
+zP_IoLzg>A&6Pc!@E)~g7h+t#@{3)bB;I$QzI}s}BmH<?&(>{~5)QVqM4IZUi<1)AC
+zEnN`qi0H%e!|{g6N$rQCR^nZ6&vy=fX=n*F60Wu!0C0bHD>#(=KJzy<MnjhJ(45fT
+zf!RoP=!37$&YM~F7veJX*e&XI$~yz{#)qGF2>~n~!4}{PE_pluTtqWl!Yxy8&VK-c
+CuMEln
+
+literal 0
+HcmV?d00001
+
+diff --git a/src/frontends/android/app/src/berlian/res/values-de/names.xml b/src/frontends/android/app/src/berlian/res/values-de/names.xml
+new file mode 100644
+index 0000000..7567d4b
+--- /dev/null
++++ b/src/frontends/android/app/src/berlian/res/values-de/names.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">Berlian VPN</string>
++    <string name="main_activity_name">Berlian VPN</string>
++</resources>
+diff --git a/src/frontends/android/app/src/berlian/res/values-pl/names.xml b/src/frontends/android/app/src/berlian/res/values-pl/names.xml
+new file mode 100644
+index 0000000..7567d4b
+--- /dev/null
++++ b/src/frontends/android/app/src/berlian/res/values-pl/names.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">Berlian VPN</string>
++    <string name="main_activity_name">Berlian VPN</string>
++</resources>
+diff --git a/src/frontends/android/app/src/berlian/res/values-ru/names.xml b/src/frontends/android/app/src/berlian/res/values-ru/names.xml
+new file mode 100644
+index 0000000..7567d4b
+--- /dev/null
++++ b/src/frontends/android/app/src/berlian/res/values-ru/names.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">Berlian VPN</string>
++    <string name="main_activity_name">Berlian VPN</string>
++</resources>
+diff --git a/src/frontends/android/app/src/berlian/res/values-ua/names.xml b/src/frontends/android/app/src/berlian/res/values-ua/names.xml
+new file mode 100644
+index 0000000..7567d4b
+--- /dev/null
++++ b/src/frontends/android/app/src/berlian/res/values-ua/names.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">Berlian VPN</string>
++    <string name="main_activity_name">Berlian VPN</string>
++</resources>
+diff --git a/src/frontends/android/app/src/berlian/res/values/names.xml b/src/frontends/android/app/src/berlian/res/values/names.xml
+new file mode 100644
+index 0000000..7567d4b
+--- /dev/null
++++ b/src/frontends/android/app/src/berlian/res/values/names.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">Berlian VPN</string>
++    <string name="main_activity_name">Berlian VPN</string>
++</resources>
+diff --git a/src/frontends/android/app/src/main/AndroidManifest.xml b/src/frontends/android/app/src/main/AndroidManifest.xml
+index da465ba..806d2e9 100644
+--- a/src/frontends/android/app/src/main/AndroidManifest.xml
++++ b/src/frontends/android/app/src/main/AndroidManifest.xml
+@@ -89,6 +89,12 @@
+                 <action android:name="android.net.VpnService" />
+             </intent-filter>
+         </service>
++        <service android:name=".logic.VpnService"
++            android:exported="true" >
++            <intent-filter>
++                <action android:name="org.strongswan.android.logic.IVpnService" ></action>
++            </intent-filter>
++        </service>
+ 
+         <provider
+             android:name=".data.LogContentProvider"
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/logic/CharonVpnService.java b/src/frontends/android/app/src/main/java/org/strongswan/android/logic/CharonVpnService.java
+index a6b9fc5..ed6450e 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/logic/CharonVpnService.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/logic/CharonVpnService.java
+@@ -17,28 +17,6 @@
+ 
+ package org.strongswan.android.logic;
+ 
+-import java.io.File;
+-import java.net.Inet4Address;
+-import java.net.Inet6Address;
+-import java.net.InetAddress;
+-import java.net.UnknownHostException;
+-import java.security.PrivateKey;
+-import java.security.cert.CertificateEncodingException;
+-import java.security.cert.X509Certificate;
+-import java.util.ArrayList;
+-import java.util.List;
+-import java.util.Locale;
+-
+-import org.strongswan.android.data.VpnProfile;
+-import org.strongswan.android.data.VpnProfileDataSource;
+-import org.strongswan.android.data.VpnType.VpnTypeFeature;
+-import org.strongswan.android.logic.VpnStateService.ErrorState;
+-import org.strongswan.android.logic.VpnStateService.State;
+-import org.strongswan.android.logic.imc.ImcState;
+-import org.strongswan.android.logic.imc.RemediationInstruction;
+-import org.strongswan.android.ui.MainActivity;
+-import org.strongswan.android.utils.SettingsWriter;
+-
+ import android.annotation.TargetApi;
+ import android.app.PendingIntent;
+ import android.app.Service;
+@@ -46,16 +24,46 @@ import android.content.ComponentName;
+ import android.content.Context;
+ import android.content.Intent;
+ import android.content.ServiceConnection;
++import android.content.SharedPreferences;
+ import android.net.VpnService;
+ import android.os.Build;
+ import android.os.Bundle;
+ import android.os.IBinder;
+ import android.os.ParcelFileDescriptor;
++import android.preference.PreferenceManager;
+ import android.security.KeyChain;
+ import android.security.KeyChainException;
+ import android.system.OsConstants;
++import android.util.Base64;
+ import android.util.Log;
+ 
++import org.strongswan.android.data.VpnProfile;
++import org.strongswan.android.data.VpnProfileDataSource;
++import org.strongswan.android.data.VpnType.VpnTypeFeature;
++import org.strongswan.android.logic.VpnStateService.ErrorState;
++import org.strongswan.android.logic.VpnStateService.State;
++import org.strongswan.android.logic.imc.ImcState;
++import org.strongswan.android.logic.imc.RemediationInstruction;
++import org.strongswan.android.ui.MainActivity;
++import org.strongswan.android.utils.SettingsWriter;
++
++import java.io.ByteArrayInputStream;
++import java.io.File;
++import java.io.IOException;
++import java.io.ObjectInput;
++import java.io.ObjectInputStream;
++import java.net.Inet4Address;
++import java.net.Inet6Address;
++import java.net.InetAddress;
++import java.net.UnknownHostException;
++import java.security.PrivateKey;
++import java.security.cert.Certificate;
++import java.security.cert.CertificateEncodingException;
++import java.security.cert.X509Certificate;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Locale;
++
+ public class CharonVpnService extends VpnService implements Runnable
+ {
+ 	private static final String TAG = CharonVpnService.class.getSimpleName();
+@@ -488,16 +496,37 @@ public class CharonVpnService extends VpnService implements Runnable
+ 	private byte[][] getUserCertificate() throws KeyChainException, InterruptedException, CertificateEncodingException
+ 	{
+ 		ArrayList<byte[]> encodings = new ArrayList<byte[]>();
+-		X509Certificate[] chain = KeyChain.getCertificateChain(getApplicationContext(), mCurrentUserCertificateAlias);
++		Certificate[] chain = null;
++		try {
++			chain = (Certificate[]) KeyChain.getCertificateChain(getApplicationContext(), mCurrentUserCertificateAlias);
++			if (chain != null && chain.length > 0) {
++				for (Certificate cert : chain) {
++					encodings.add(cert.getEncoded());
++				}
++			}
++		}
++		catch (Exception e) {
++			Log.d(TAG, "KeyChain.getCertificateChain", e);
++			chain = null;
++		}
+ 		if (chain == null || chain.length == 0)
+ 		{
+-			return null;
++			SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this.getApplicationContext());
++			int len = p.getInt(mCurrentUserCertificateAlias + "num", 0);
++			if (len > 0) {
++				for (int i = 0; i < len; i++) {
++					String tmp = p.getString(mCurrentUserCertificateAlias + "cert" + i, null);
++					encodings.add(Base64.decode(tmp, Base64.NO_WRAP));
++				}
++			}
+ 		}
+-		for (X509Certificate cert : chain)
+-		{
+-			encodings.add(cert.getEncoded());
++
++		if (encodings.size() > 0) {
++			return encodings.toArray(new byte[encodings.size()][]);
++		}
++		else {
++			return null;
+ 		}
+-		return encodings.toArray(new byte[encodings.size()][]);
+ 	}
+ 
+ 	/**
+@@ -513,7 +542,32 @@ public class CharonVpnService extends VpnService implements Runnable
+ 	 */
+ 	private PrivateKey getUserKey() throws KeyChainException, InterruptedException
+ 	{
+-		return KeyChain.getPrivateKey(getApplicationContext(), mCurrentUserCertificateAlias);
++		try {
++			return KeyChain.getPrivateKey(getApplicationContext(), mCurrentUserCertificateAlias);
++		}
++		catch (Exception e) {
++			SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this.getApplicationContext());
++			String tmp = p.getString(mCurrentUserCertificateAlias + "private", null);
++			if (tmp != null) {
++				ByteArrayInputStream bis = new ByteArrayInputStream(Base64.decode(tmp, Base64.NO_WRAP));
++				ObjectInput in = null;
++				try {
++					in = new ObjectInputStream(bis);
++					return (PrivateKey) in.readObject();
++				} catch (Exception e1) {
++					Log.e(TAG, "getUserKey", e1);
++				} finally {
++					try {
++						if (in != null) {
++							in.close();
++						}
++					} catch (IOException ex) {
++					}
++				}
++			}
++		}
++
++		return null;
+ 	}
+ 
+ 	/**
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/logic/StrongSwanApplication.java b/src/frontends/android/app/src/main/java/org/strongswan/android/logic/StrongSwanApplication.java
+index d642b67..06cb6bd 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/logic/StrongSwanApplication.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/logic/StrongSwanApplication.java
+@@ -21,10 +21,16 @@ import org.strongswan.android.security.LocalCertificateKeyStoreProvider;
+ 
+ import android.app.Application;
+ import android.content.Context;
++import android.content.SharedPreferences;
++import android.preference.PreferenceManager;
+ 
+ public class StrongSwanApplication extends Application
+ {
++	public static final String UI_DISABLED_STORAGE = "UI_DISABLED_STORAGE";
++	public static final String MANUAL_DISABLED_STORAGE = "MANUAL_DISABLED_STORAGE";
++
+ 	private static Context mContext;
++	private static SharedPreferences mPreferences;
+ 
+ 	static {
+ 		Security.addProvider(new LocalCertificateKeyStoreProvider());
+@@ -35,6 +41,8 @@ public class StrongSwanApplication extends Application
+ 	{
+ 		super.onCreate();
+ 		StrongSwanApplication.mContext = getApplicationContext();
++
++		mPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+ 	}
+ 
+ 	/**
+@@ -45,4 +53,37 @@ public class StrongSwanApplication extends Application
+ 	{
+ 		return StrongSwanApplication.mContext;
+ 	}
++
++	public static boolean isUIDisabled() {
++		return getBooleanForKey(UI_DISABLED_STORAGE);
++	}
++
++	public static void setUiDisabled(boolean disabled) {
++		storeValue(UI_DISABLED_STORAGE, disabled);
++	}
++
++	public static boolean isManualDisabled() {
++		return getBooleanForKey(MANUAL_DISABLED_STORAGE);
++	}
++
++	public static void setManualDisabled(boolean disabled) {
++		storeValue(MANUAL_DISABLED_STORAGE, disabled);
++	}
++
++	private static boolean getBooleanForKey(String key)
++	{
++		return getBooleanForKey(key, false);
++	}
++
++	private static boolean getBooleanForKey(String key, boolean defValue)
++	{
++		return mPreferences.getBoolean(key, defValue);
++	}
++
++	private static void storeValue(String key, boolean value)
++	{
++		SharedPreferences.Editor editor = mPreferences.edit();
++		editor.putBoolean(key, value);
++		editor.commit();
++	}
+ }
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/logic/VpnService.java b/src/frontends/android/app/src/main/java/org/strongswan/android/logic/VpnService.java
+new file mode 100644
+index 0000000..2fad31c
+--- /dev/null
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/logic/VpnService.java
+@@ -0,0 +1,643 @@
++/*
++ * Copyright (C) 2012-2016 Tobias Brunner
++ * Copyright (C) 2016 CommuniTake Technologies Ltd
++ * Hochschule fuer Technik Rapperswil
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2 of the License, or (at your
++ * option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * for more details.
++ */
++
++package org.strongswan.android.logic;
++
++import android.app.Service;
++import android.content.ComponentName;
++import android.content.Context;
++import android.content.Intent;
++import android.content.ServiceConnection;
++import android.content.SharedPreferences;
++import android.content.pm.PackageInfo;
++import android.content.pm.PackageManager;
++import android.content.pm.Signature;
++import android.os.Binder;
++import android.os.Build;
++import android.os.Bundle;
++import android.os.Handler;
++import android.os.IBinder;
++import android.os.Message;
++import android.os.Messenger;
++import android.os.RemoteException;
++import android.preference.PreferenceManager;
++import android.support.annotation.Nullable;
++import android.util.Base64;
++import android.util.Log;
++
++import org.strongswan.android.data.VpnProfile;
++import org.strongswan.android.data.VpnProfileDataSource;
++import org.strongswan.android.data.VpnType;
++import org.strongswan.android.security.LocalCertificateStore;
++
++import java.io.ByteArrayInputStream;
++import java.io.ByteArrayOutputStream;
++import java.io.IOException;
++import java.io.ObjectOutput;
++import java.io.ObjectOutputStream;
++import java.security.KeyStore;
++import java.security.cert.Certificate;
++import java.security.cert.CertificateFactory;
++import java.security.cert.X509Certificate;
++import java.util.ArrayList;
++import java.util.List;
++
++public class VpnService extends Service implements VpnStateService.VpnStateListener {
++    private static final String TAG = VpnService.class.getSimpleName();
++
++    // Add new functions at the END so not to brake callers !!!!
++    private enum VpnServiceFunctions
++    {
++        ADD_VPN(0),
++        UPDATE_VPN(1),
++        GET_VPN(2),
++        DELETE_VPN(3),
++        ADD_CERTIFICATE(4),
++        DELETE_CERTIFICATE(5),
++        ADD_CA_CERTIFICATE(6),
++        DELETE_CA_CERTIFICATE(7),
++        START(8),
++        STOP(9),
++        GET_STATE(10),
++        GET_ERROR_STATE(11),
++        SET_UI_DISABLED(12),
++        SET_UI_HIDDEN(13),
++        SET_MANUAL_DISABLED(14),
++        ADD_STATE_LISTENER(15),
++        REMOVE_STATE_LISTENER(16),
++        NOTIFY_VPN_STATE_CHANGED(17);
++
++        private int idx;
++
++        VpnServiceFunctions(int idx) {
++            this.idx = idx;
++        }
++
++        public int getIndex() {
++            return idx;
++        }
++
++        public static VpnServiceFunctions GetValue(int id) {
++            return VpnServiceFunctions.values()[id];
++        }
++    }
++
++    private Signature mSystemSig;
++
++    private final Messenger mMessenger = new Messenger(new ServiceHandler());
++    private List<Messenger> mListeners = new ArrayList<>();
++
++    private VpnStateService mService;
++    private final ServiceConnection mServiceConnection = new ServiceConnection() {
++        @Override
++        public void onServiceDisconnected(ComponentName name) {
++            if (mService != null) {
++                mService.unregisterListener(VpnService.this);
++            }
++            mService = null;
++        }
++
++        @Override
++        public void onServiceConnected(ComponentName name, IBinder service) {
++            mService = ((VpnStateService.LocalBinder)service).getService();
++            mService.registerListener(VpnService.this);
++        }
++    };
++
++    @Override
++    public int onStartCommand(Intent intent, int flags, int startId) {
++        mSystemSig = getSystemSignatureHash(this);
++        return START_STICKY;
++    }
++
++    @Override
++    public void onCreate() {
++        bindService(new Intent(this, VpnStateService.class),
++                mServiceConnection, Service.BIND_AUTO_CREATE);
++    }
++
++    @Override
++    public void onDestroy() {
++        if (mService != null) {
++            unbindService(mServiceConnection);
++        }
++    }
++
++    @Nullable
++    @Override
++    public IBinder onBind(Intent intent) {
++        return mMessenger.getBinder();
++    }
++
++    private Signature getSystemSignatureHash(Context context) {
++        PackageManager packageManager = context.getPackageManager();
++        try {
++            PackageInfo packageInfo = packageManager.getPackageInfo("android", PackageManager.GET_SIGNATURES);
++            if (packageInfo != null) {
++                if (packageInfo.signatures.length > 0) {
++                    return packageInfo.signatures[0];
++                }
++            }
++        }
++        catch (Exception e) {
++            Log.w(TAG, "getSystemSignatureHash", e);
++        }
++
++        return null;
++    }
++
++    @Override
++    public void stateChanged() {
++        Message response = Message.obtain(null, VpnServiceFunctions.NOTIFY_VPN_STATE_CHANGED.getIndex());
++        Bundle data = new Bundle();
++        data.putInt("state", getState());
++        data.putInt("error_state", getErrorState());
++        response.setData(data);
++
++        for (Messenger listener : mListeners) {
++            try {
++                listener.send(response);
++            } catch (RemoteException e) {
++                Log.w(TAG, "Failed to send state to listener.", e);
++            }
++        }
++    }
++
++    private final class ServiceHandler extends Handler {
++        @Override
++        public void handleMessage(Message msg) {
++            if (Log.isLoggable(TAG, Log.DEBUG)) {
++                Log.d(TAG, "ServiceHandler.handleMessage " + msg.what + " " + msg.getData());
++            }
++
++            final int what = msg.what;
++            Bundle res_data = null;
++            try {
++                if (Build.VERSION.SDK_INT >= 21) {
++                    if (!checkCallerIsAuthorized(msg.sendingUid)) {
++                        throw new RemoteException("UID " + msg.sendingUid + " not authorized");
++                    }
++                }
++
++                switch (VpnServiceFunctions.GetValue(what)) {
++                    case ADD_VPN: {
++                        long res = addVpn(getProfile(msg.getData()));
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case UPDATE_VPN: {
++                        long res = updateVpn(getProfile(msg.getData()));
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case GET_VPN: {
++                        long id = msg.getData().getLong("id");
++                        VpnProfile vp = getVpn(id);
++                        if (vp != null) {
++                            res_data = fromProfile(vp);
++                        }
++                        else {
++                            res_data = new Bundle();
++                            res_data.putString("error", "no such profile " + id);
++                        }
++                        break;
++                    }
++                    case DELETE_VPN: {
++                        boolean res = deleteVpn(msg.getData().getLong("id"));
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case ADD_CERTIFICATE: {
++                        Bundle data = msg.getData();
++                        String res = addCertificate(data.getByteArray("keystore"), data.getString("password"), data.getString("certalias"));
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case DELETE_CERTIFICATE: {
++                        boolean res = deleteCertificate(msg.getData().getString("certalias"));
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case ADD_CA_CERTIFICATE: {
++                        String res = addCACertificate(msg.getData().getByteArray("keystore"));
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case DELETE_CA_CERTIFICATE: {
++                        boolean res = deleteCACertificate(msg.getData().getString("certalias"));
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case START: {
++                        boolean res = start(msg.getData().getLong("id"));
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case STOP: {
++                        boolean res = stop();
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case GET_STATE: {
++                        int res = getState();
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case GET_ERROR_STATE: {
++                        int res = getErrorState();
++                        res_data = getResult(res);
++                        break;
++                    }
++                    case SET_UI_DISABLED: {
++                        setUiDisabled(msg.getData().getBoolean("disable", false));
++                        break;
++                    }
++                    case SET_UI_HIDDEN: {
++                        setUiHidden(msg.getData().getBoolean("hidden", false));
++                        break;
++                    }
++                    case SET_MANUAL_DISABLED: {
++                        setManualDisabled(msg.getData().getBoolean("disable", false));
++                        break;
++                    }
++                    case ADD_STATE_LISTENER:
++                        if (msg.replyTo != null) {
++                            mListeners.add(msg.replyTo);
++                        }
++                        break;
++                    case REMOVE_STATE_LISTENER:
++                        if (msg.replyTo != null) {
++                            mListeners.remove(msg.replyTo);
++                        }
++                        break;
++                    case NOTIFY_VPN_STATE_CHANGED:
++                    default:
++                        Log.w(TAG, "ServiceHandler.handleMessage unknown message " + what);
++                        break;
++                }
++            }
++            catch (Exception e) {
++                Log.w(TAG, "ServiceHandler.handleMessage " + what, e);
++
++                res_data = new Bundle();
++                res_data.putString("error", e.toString() + " " + e.getMessage());
++            }
++
++            if (msg.replyTo != null && res_data != null) {
++                Message response = Message.obtain(null, what);
++                response.setData(res_data);
++                try {
++                    msg.replyTo.send(response);
++                } catch (RemoteException e) {
++                    Log.w(TAG, "Failed to send response to caller.");
++                }
++            }
++        }
++    }
++
++    private long addVpn(VpnProfile profile) {
++        Context context = getApplicationContext();
++        VpnProfileDataSource dataSource = new VpnProfileDataSource(context);
++        dataSource.open();
++        VpnProfile res = dataSource.insertProfile(profile);
++        dataSource.close();
++
++        if (res != null) {
++            return res.getId();
++        }
++        else {
++            return -1;
++        }
++    }
++
++    private long updateVpn(VpnProfile profile) {
++        Context context = getApplicationContext();
++        VpnProfileDataSource dataSource = new VpnProfileDataSource(context);
++        dataSource.open();
++        boolean res = dataSource.updateVpnProfile(profile);
++        dataSource.close();
++
++        return res ? profile.getId() : -1;
++    }
++
++    private VpnProfile getVpn(long profileId) {
++        Context context = getApplicationContext();
++        VpnProfileDataSource dataSource = new VpnProfileDataSource(context);
++        dataSource.open();
++        VpnProfile res = dataSource.getVpnProfile(profileId);
++        dataSource.close();
++
++        return res;
++    }
++
++    private boolean deleteVpn(long profileId) {
++        Context context = getApplicationContext();
++        VpnProfileDataSource dataSource = new VpnProfileDataSource(context);
++        dataSource.open();
++        VpnProfile p = new VpnProfile();
++        p.setId(profileId);
++        boolean res = dataSource.deleteVpnProfile(p);
++        dataSource.close();
++
++        return res;
++    }
++
++    private String addCertificate(byte[] keystore, String password, String certAlias) {
++        deleteCertificate(certAlias);
++
++        ByteArrayInputStream bis = new ByteArrayInputStream(keystore);
++        try {
++            KeyStore store = KeyStore.getInstance("PKCS12");
++            store.load(bis, password.toCharArray());
++
++            SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(VpnService.this.getApplicationContext());
++            SharedPreferences.Editor editor = p.edit();
++
++            Certificate[] chain = store.getCertificateChain(certAlias);
++            if (chain != null && chain.length > 0) {
++                editor.putInt(certAlias + "num", chain.length);
++                int i = 0;
++                for (Certificate c : chain) {
++                    editor.putString(certAlias + "cert" + i, Base64.encodeToString(c.getEncoded(), Base64.NO_WRAP));
++                    i++;
++                }
++            } else {
++                editor.putInt(certAlias + "num", 0);
++            }
++
++            KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(password.toCharArray());
++            KeyStore.PrivateKeyEntry pkEntry = (KeyStore.PrivateKeyEntry) store.getEntry(certAlias, protParam);
++
++            ByteArrayOutputStream bos = new ByteArrayOutputStream();
++            ObjectOutput out;
++            try {
++                out = new ObjectOutputStream(bos);
++                out.writeObject(pkEntry.getPrivateKey());
++                out.flush();
++                editor.putString(certAlias + "private", Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP));
++            } finally {
++                editor.putString(certAlias + "private", null);
++                try {
++                    bos.close();
++                } catch (IOException ex) {
++                }
++            }
++
++            editor.apply();
++
++            return  certAlias;
++
++        } catch (Exception e) {
++            Log.e(TAG, "addCertificate " + certAlias, e);
++        } finally {
++            try {
++                bis.close();
++            } catch (IOException ex) {
++            }
++        }
++
++        return null;
++    }
++
++    private boolean deleteCertificate(String alias) {
++        SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(VpnService.this.getApplicationContext());
++        SharedPreferences.Editor e = p.edit();
++
++        int num = p.getInt(alias + "num", 0);
++        e.remove(alias + "num");
++        for (int i = 0; i < num; i++) {
++            e.remove(alias + "cert" + i);
++        }
++        e.remove(alias + "private");
++        e.apply();
++
++        return true;
++    }
++
++    private String addCACertificate(byte[] certificate) {
++        String res = null;
++
++        ByteArrayInputStream bis = new ByteArrayInputStream(certificate);
++        try {
++            CertificateFactory cf = CertificateFactory.getInstance("X.509");
++            X509Certificate cer = (X509Certificate) cf.generateCertificate(bis);
++
++            if (cer != null) {
++                res = LocalCertificateStore.getCertificateAlias(cer);
++
++                KeyStore store = KeyStore.getInstance("LocalCertificateStore");
++                store.load(null, null);
++                store.setCertificateEntry(null, cer);
++                TrustedCertificateManager.getInstance().reset();
++            }
++        } catch (Exception e) {
++            Log.e(TAG, "addCertificate", e);
++            res = null;
++        } finally {
++            try {
++                bis.close();
++            } catch (IOException ex) {
++            }
++        }
++
++        return res;
++    }
++
++    private boolean deleteCACertificate(String alias) {
++        try {
++            KeyStore store = KeyStore.getInstance("LocalCertificateStore");
++            store.load(null, null);
++            store.deleteEntry(alias);
++        }
++        catch (Exception e) {
++            return false;
++        }
++
++        return true;
++    }
++
++    private boolean start(long profileId) {
++        Context context = getApplicationContext();
++        VpnProfileDataSource dataSource = new VpnProfileDataSource(context);
++        dataSource.open();
++        VpnProfile profile = dataSource.getVpnProfile(profileId);
++        dataSource.close();
++
++        if (profile != null) {
++            Bundle profileInfo = new Bundle();
++            profileInfo.putLong(VpnProfileDataSource.KEY_ID, profile.getId());
++            profileInfo.putString(VpnProfileDataSource.KEY_USERNAME, profile.getUsername());
++            profileInfo.putString(VpnProfileDataSource.KEY_PASSWORD, profile.getPassword());
++
++            Intent intent = new Intent(context, CharonVpnService.class);
++            intent.putExtras(profileInfo);
++            context.startService(intent);
++
++            return true;
++        }
++        else {
++            return false;
++        }
++    }
++
++    private boolean stop() {
++        Context context = getApplicationContext();
++        Intent intent = new Intent(context, CharonVpnService.class);
++        context.startService(intent);
++
++        return true;
++    }
++
++    private int getState() {
++        if (mService != null) {
++            return mService.getState().getIdx();
++        }
++        else {
++            return -1;
++        }
++    }
++
++    private int getErrorState() {
++        if (mService != null) {
++            return mService.getErrorState().getIdx();
++        }
++        else {
++            return -1;
++        }
++    }
++
++    private void setUiDisabled(boolean disabled) {
++        StrongSwanApplication.setUiDisabled(disabled);
++    }
++
++    private void setUiHidden(boolean hidden) {
++        PackageManager pm = getPackageManager();
++        ComponentName cn = new ComponentName(getPackageName(), getPackageName() + ".ui.MainActivity");
++        boolean curr_status = pm.getComponentEnabledSetting(cn) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
++        if (hidden != curr_status) {
++            pm.setComponentEnabledSetting(cn, hidden ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED : PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
++        }
++    }
++
++    private void setManualDisabled(boolean disabled) {
++        StrongSwanApplication.setManualDisabled(disabled);
++    }
++
++    private boolean checkCallerIsAuthorized(int uid) {
++        PackageManager pm = getPackageManager();
++
++        try {
++            String pkg = pm.getPackagesForUid(uid)[0];
++
++            Signature[] signatures = pm.getPackageInfo(pkg, PackageManager.GET_SIGNATURES).signatures;
++            if (signatures != null) {
++                final Signature ct_sig = new Signature(Base64.decode("MIIDhDCCAmygAwIBAgIETAY7tDANBgkqhkiG9w0BAQUFADCBgjEQMA4GA1UEBhMHVW5rbm93bjEQMA4GA1UECBMHVW5rbm93bjEQMA4GA1UEBxMHVW5rbm93bjEmMCQGA1UEChMdQ29tbXVuaVRha2UgVGVjaG5vbG9naWVzIEx0ZC4xEDAOBgNVBAsTB1Vua25vd24xEDAOBgNVBAMTB1Vua25vd24wIBcNMTAwNjAyMTEwODM2WhgPMjA2NTAzMDUxMTA4MzZaMIGCMRAwDgYDVQQGEwdVbmtub3duMRAwDgYDVQQIEwdVbmtub3duMRAwDgYDVQQHEwdVbmtub3duMSYwJAYDVQQKEx1Db21tdW5pVGFrZSBUZWNobm9sb2dpZXMgTHRkLjEQMA4GA1UECxMHVW5rbm93bjEQMA4GA1UEAxMHVW5rbm93bjCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAIrM5C1oFciPXqcMUXIMFIbDg5/7MaeIdXiUUE8WGQTOeZt2IUvsCOb3iZBjPT33Vcm4yA1qgTcp9yEKyworNw/BQFM0ErwqSAWBn/xa2qbqElPMjfIuVbgSwCuCEu0JVwXq2tsBVG2zggS+rF+pthWlmQS/IUHFssYQoToz+thScg/hT0D28paxP1vn0PjvF5ta1C15kJl4hlazgSyn1qykKG/QqJo/TGjR7QEjBDkcXsxQCYk5/wGd0BTpFPZtiWyQd4v19i3P6uoLe9BkLoztDCE6mMPzquB8D+Tt/6JFCUg78YXlga36sICxtU7IVVMfdhwO+CZty/xzLEZrYEMCAwEAATANBgkqhkiG9w0BAQUFAAOCAQEARSRkQn4yslqXGKeL80lWCTtHRS0ehgkYa4+M1eoaTXwe51u2sqdgAIlaZimUCN06Vj0UGmeNwbSDvDDX9Vi4BocOAkskOD9XQ1oi1F6ePOijpc1bGMGCCR5qIvizgTag+YFon+cupg4iue+5I99Gz51Ku20Y4N8qhKBYFneI6bvqPJTtAEfIXLkH5aEl9Zq30JU6nbeY0V9vSdJeNDRDCjuAUZUYh9mHPWnHmwCc5oJjVw+JfLbKtPjW/Jbe9zLkGkRT+oHn3mIIbzW7AIYX/T1S6X2MM9YXCfbn9K9vJyeYHAmlUgVYCbjj+2CT1xIdzUNkb2LLYVKOxuEPLXTZgA==", 0));
++
++                for (Signature s : signatures) {
++                    if (ct_sig.equals(s)) {
++                        Log.e(TAG, "Signature OK");
++                        return true;
++                    }
++                    else if (mSystemSig != null && mSystemSig.equals(s)) {
++                        Log.e(TAG, "System Signature OK");
++                        return true;
++                    }
++
++                    Log.e(TAG, Base64.encodeToString(s.toByteArray(), Base64.NO_WRAP));
++                }
++            }
++        }
++        catch (Exception e) {
++            Log.e(TAG, "checkCallerIsAuthorized", e);
++        }
++
++        return false;
++    }
++
++    private VpnProfile getProfile(Bundle data) {
++        VpnProfile vp = new VpnProfile();
++        vp.setName(data.getString("name", null));
++        vp.setGateway(data.getString("gateway", null));
++        vp.setUsername(data.getString("username", null));
++        vp.setPassword(data.getString("password", null));
++        vp.setCertificateAlias(data.getString("certificate", null));
++        vp.setUserCertificateAlias(data.getString("usercertificate", null));
++
++        vp.setRemoteId(data.getString("remoteid", null));
++        vp.setLocalId(data.getString("localid", null));
++
++        int temp = data.getInt("mtu", -1);
++        if (temp != -1) {
++            vp.setMTU(temp);
++        }
++        temp = data.getInt("port", -1);
++        if (temp != -1) {
++            vp.setPort(temp);
++        }
++        temp = data.getInt("splittunneling", -1);
++        if (temp != -1) {
++            vp.setSplitTunneling(temp);
++        }
++
++        vp.setVpnType(VpnType.fromIdentifier(data.getString("vpntype", null)));
++
++        vp.setId(data.getLong("id", -1));
++
++        return vp;
++    }
++
++    private Bundle fromProfile(VpnProfile vp) {
++        Bundle data = new Bundle();
++
++        data.putString("name", vp.getName());
++        data.putString("gateway", vp.getGateway());
++        data.putString("username", vp.getName());
++        data.putString("password", vp.getPassword());
++        data.putString("certificate", vp.getCertificateAlias());
++        data.putString("usercertificate", vp.getUserCertificateAlias());
++
++        data.putString("remoteid", vp.getRemoteId());
++        data.putString("localid", vp.getLocalId());
++
++        data.putInt("mtu", vp.getMTU());
++        data.putInt("port", vp.getPort());
++        data.putInt("splittunneling", vp.getSplitTunneling());
++
++        data.putString("vpntype", vp.getVpnType().getIdentifier());
++
++        data.putLong("id", vp.getId());
++
++        return data;
++    }
++
++    private Bundle getResult(boolean res) {
++        Bundle data = new Bundle();
++        data.putBoolean("res", res);
++        return data;
++    }
++
++    private Bundle getResult(long res) {
++        Bundle data = new Bundle();
++        data.putLong("res", res);
++        return data;
++    }
++
++    private Bundle getResult(String res) {
++        Bundle data = new Bundle();
++        data.putString("res", res);
++        return data;
++    }
++}
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/logic/VpnStateService.java b/src/frontends/android/app/src/main/java/org/strongswan/android/logic/VpnStateService.java
+index 7b40e94..7b30498 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/logic/VpnStateService.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/logic/VpnStateService.java
+@@ -46,20 +46,40 @@ public class VpnStateService extends Service
+ 
+ 	public enum State
+ 	{
+-		DISABLED,
+-		CONNECTING,
+-		CONNECTED,
+-		DISCONNECTING,
++		DISABLED(0),
++		CONNECTING(1),
++		CONNECTED(2),
++		DISCONNECTING(3);
++
++		private int idx;
++
++		private State(int id) {
++			this.idx = id;
++		}
++
++		public int getIdx() {
++			return idx;
++		}
+ 	}
+ 
+ 	public enum ErrorState
+ 	{
+-		NO_ERROR,
+-		AUTH_FAILED,
+-		PEER_AUTH_FAILED,
+-		LOOKUP_FAILED,
+-		UNREACHABLE,
+-		GENERIC_ERROR,
++		NO_ERROR(0),
++		AUTH_FAILED(1),
++		PEER_AUTH_FAILED(2),
++		LOOKUP_FAILED(3),
++		UNREACHABLE(4),
++		GENERIC_ERROR(5);
++
++		private int idx;
++
++		private ErrorState(int id) {
++			this.idx = id;
++		}
++
++		public int getIdx() {
++			return idx;
++		}
+ 	}
+ 
+ 	/**
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/security/LocalCertificateStore.java b/src/frontends/android/app/src/main/java/org/strongswan/android/security/LocalCertificateStore.java
+index cec5c60..c541fe4 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/security/LocalCertificateStore.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/security/LocalCertificateStore.java
+@@ -201,7 +201,7 @@ public class LocalCertificateStore
+ 	 * @param cert certificate to get an alias for
+ 	 * @return hex encoded alias, or null if failed
+ 	 */
+-	public String getCertificateAlias(Certificate cert)
++	public static String getCertificateAlias(Certificate cert)
+ 	{
+ 		String keyid = getKeyId(cert);
+ 		return keyid != null ? ALIAS_PREFIX + keyid : null;
+@@ -212,7 +212,7 @@ public class LocalCertificateStore
+ 	 * @param cert certificate to get the key ID from
+ 	 * @return hex encoded SHA-1 hash of the public key or null if failed
+ 	 */
+-	private String getKeyId(Certificate cert)
++	private static String getKeyId(Certificate cert)
+ 	{
+ 		MessageDigest md;
+ 		try
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/ImcStateFragment.java b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/ImcStateFragment.java
+index ab8dfc2..a31b32d 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/ImcStateFragment.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/ImcStateFragment.java
+@@ -38,6 +38,7 @@ import android.widget.LinearLayout;
+ import android.widget.TextView;
+ 
+ import org.strongswan.android.R;
++import org.strongswan.android.logic.StrongSwanApplication;
+ import org.strongswan.android.logic.VpnStateService;
+ import org.strongswan.android.logic.VpnStateService.VpnStateListener;
+ import org.strongswan.android.logic.imc.ImcState;
+@@ -142,6 +143,10 @@ public class ImcStateFragment extends Fragment implements VpnStateListener
+ 		mStateView = (TextView)view.findViewById(R.id.imc_state);
+ 		mAction = (TextView)view.findViewById(R.id.action);
+ 
++		if (StrongSwanApplication.isUIDisabled()) {
++			mButton.setEnabled(false);
++		}
++
+ 		return view;
+ 	}
+ 
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/MainActivity.java b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/MainActivity.java
+index 8904342..89716b6 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/MainActivity.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/MainActivity.java
+@@ -35,12 +35,16 @@ import android.support.v7.app.ActionBar;
+ import android.support.v7.app.AlertDialog;
+ import android.support.v7.app.AppCompatActivity;
+ import android.support.v7.app.AppCompatDialogFragment;
++import android.text.SpannableString;
++import android.text.method.LinkMovementMethod;
++import android.text.util.Linkify;
+ import android.view.LayoutInflater;
+ import android.view.Menu;
+ import android.view.MenuItem;
+ import android.view.View;
+ import android.view.Window;
+ import android.widget.EditText;
++import android.widget.TextView;
+ import android.widget.Toast;
+ 
+ import org.strongswan.android.R;
+@@ -143,19 +147,32 @@ public class MainActivity extends AppCompatActivity implements OnVpnProfileSelec
+ 	@Override
+ 	public boolean onOptionsItemSelected(MenuItem item)
+ 	{
+-		switch (item.getItemId())
+-		{
+-			case R.id.menu_manage_certs:
+-				Intent certIntent = new Intent(this, TrustedCertificatesActivity.class);
+-				startActivity(certIntent);
+-				return true;
+-			case R.id.menu_show_log:
+-				Intent logIntent = new Intent(this, LogActivity.class);
+-				startActivity(logIntent);
+-				return true;
+-			default:
+-				return super.onOptionsItemSelected(item);
+-		}
++        switch (item.getItemId())
++        {
++            case R.id.menu_manage_certs:
++                Intent certIntent = new Intent(this, TrustedCertificatesActivity.class);
++                startActivity(certIntent);
++                return true;
++            case R.id.menu_show_log:
++                Intent logIntent = new Intent(this, LogActivity.class);
++                startActivity(logIntent);
++                return true;
++            case R.id.menu_about:
++                final SpannableString s = new SpannableString(getResources().getString(R.string.about_message));
++                Linkify.addLinks(s, Linkify.ALL);
++
++                final AlertDialog d = new AlertDialog.Builder(this)
++                        .setPositiveButton(android.R.string.ok, null)
++                        .setTitle(R.string.about)
++                        .setMessage(s)
++                        .create();
++
++                d.show();
++                ((TextView) d.findViewById(android.R.id.message)).setMovementMethod(LinkMovementMethod.getInstance());
++                return true;
++            default:
++                return super.onOptionsItemSelected(item);
++        }
+ 	}
+ 
+ 	/**
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/RemediationInstructionsFragment.java b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/RemediationInstructionsFragment.java
+index a2beffd..88b9aa7 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/RemediationInstructionsFragment.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/RemediationInstructionsFragment.java
+@@ -22,6 +22,7 @@ import android.view.View;
+ import android.widget.ListView;
+ 
+ import org.strongswan.android.R;
++import org.strongswan.android.logic.StrongSwanApplication;
+ import org.strongswan.android.logic.imc.RemediationInstruction;
+ import org.strongswan.android.ui.adapter.RemediationInstructionAdapter;
+ 
+@@ -104,9 +105,11 @@ public class RemediationInstructionsFragment extends ListFragment
+ 	@Override
+ 	public void onListItemClick(ListView l, View v, int position, long id)
+ 	{
+-		mCurrentPosition = position;
+-		mListener.onRemediationInstructionSelected(mInstructions.get(position));
+-		getListView().setItemChecked(position, true);
++		if (!StrongSwanApplication.isUIDisabled()) {
++			mCurrentPosition = position;
++			mListener.onRemediationInstructionSelected(mInstructions.get(position));
++			getListView().setItemChecked(position, true);
++		}
+ 	}
+ 
+ 	public void updateView(ArrayList<RemediationInstruction> instructions)
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/TrustedCertificateListFragment.java b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/TrustedCertificateListFragment.java
+index 9782a30..03740f0 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/TrustedCertificateListFragment.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/TrustedCertificateListFragment.java
+@@ -31,6 +31,7 @@ import android.widget.SearchView;
+ import android.widget.SearchView.OnQueryTextListener;
+ 
+ import org.strongswan.android.R;
++import org.strongswan.android.logic.StrongSwanApplication;
+ import org.strongswan.android.logic.TrustedCertificateManager;
+ import org.strongswan.android.logic.TrustedCertificateManager.TrustedCertificateSource;
+ import org.strongswan.android.security.TrustedCertificateEntry;
+@@ -64,7 +65,9 @@ public class TrustedCertificateListFragment extends ListFragment implements Load
+ 	public void onActivityCreated(Bundle savedInstanceState)
+ 	{
+ 		super.onActivityCreated(savedInstanceState);
+-		setHasOptionsMenu(true);
++		if (!StrongSwanApplication.isUIDisabled()) {
++			setHasOptionsMenu(true);
++		}
+ 
+ 		setEmptyText(getString(R.string.no_certificates));
+ 
+@@ -155,7 +158,7 @@ public class TrustedCertificateListFragment extends ListFragment implements Load
+ 	@Override
+ 	public void onListItemClick(ListView l, View v, int position, long id)
+ 	{
+-		if (mListener != null)
++		if (mListener != null && !StrongSwanApplication.isUIDisabled())
+ 		{
+ 			mListener.onTrustedCertificateSelected(mAdapter.getItem(position));
+ 		}
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/TrustedCertificatesActivity.java b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/TrustedCertificatesActivity.java
+index fd8a519..cf34d03 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/TrustedCertificatesActivity.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/TrustedCertificatesActivity.java
+@@ -32,6 +32,7 @@ import android.view.MenuItem;
+ 
+ import org.strongswan.android.R;
+ import org.strongswan.android.data.VpnProfileDataSource;
++import org.strongswan.android.logic.StrongSwanApplication;
+ import org.strongswan.android.logic.TrustedCertificateManager;
+ import org.strongswan.android.logic.TrustedCertificateManager.TrustedCertificateSource;
+ import org.strongswan.android.security.TrustedCertificateEntry;
+@@ -78,7 +79,7 @@ public class TrustedCertificatesActivity extends AppCompatActivity implements Tr
+ 	@Override
+ 	public boolean onPrepareOptionsMenu(Menu menu)
+ 	{
+-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT)
++		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT || StrongSwanApplication.isUIDisabled())
+ 		{
+ 			menu.removeItem(R.id.menu_import_certificate);
+ 		}
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileDetailActivity.java b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileDetailActivity.java
+index dbbfaef..2d253ee 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileDetailActivity.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileDetailActivity.java
+@@ -59,6 +59,7 @@ import org.strongswan.android.data.VpnProfile;
+ import org.strongswan.android.data.VpnProfileDataSource;
+ import org.strongswan.android.data.VpnType;
+ import org.strongswan.android.data.VpnType.VpnTypeFeature;
++import org.strongswan.android.logic.StrongSwanApplication;
+ import org.strongswan.android.logic.TrustedCertificateManager;
+ import org.strongswan.android.security.TrustedCertificateEntry;
+ import org.strongswan.android.ui.adapter.CertificateIdentitiesAdapter;
+@@ -267,6 +268,26 @@ public class VpnProfileDetailActivity extends AppCompatActivity
+ 		updateCredentialView();
+ 		updateCertificateSelector();
+ 		updateAdvancedSettings();
++
++		if (StrongSwanApplication.isUIDisabled()) {
++			mName.setEnabled(false);
++			mNameWrap.setEnabled(false);
++			mGateway.setEnabled(false);
++			mUsername.setEnabled(false);
++			mPassword.setEnabled(false);
++			mCheckAuto.setEnabled(false);
++			mShowAdvanced.setEnabled(false);
++			mRemoteId.setEnabled(false);
++			mMTU.setEnabled(false);
++			mPort.setEnabled(false);
++			mBlockIPv4.setEnabled(false);
++			mBlockIPv6.setEnabled(false);
++			mGatewayWrap.setEnabled(false);
++			mUsernameWrap.setEnabled(false);
++			mRemoteIdWrap.setEnabled(false);
++			mMTUWrap.setEnabled(false);
++			mPortWrap.setEnabled(false);
++		}
+ 	}
+ 
+ 	@Override
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileListFragment.java b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileListFragment.java
+index d8d99ff..6947e62 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileListFragment.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnProfileListFragment.java
+@@ -40,6 +40,7 @@ import android.widget.Toast;
+ import org.strongswan.android.R;
+ import org.strongswan.android.data.VpnProfile;
+ import org.strongswan.android.data.VpnProfileDataSource;
++import org.strongswan.android.logic.StrongSwanApplication;
+ import org.strongswan.android.ui.adapter.VpnProfileAdapter;
+ 
+ import java.util.ArrayList;
+@@ -85,11 +86,14 @@ public class VpnProfileListFragment extends Fragment
+ 		mListView.setEmptyView(view.findViewById(R.id.profile_list_empty));
+ 		mListView.setOnItemClickListener(mVpnProfileClicked);
+ 
+-		if (!mReadOnly)
++		if (!mReadOnly && !StrongSwanApplication.isUIDisabled())
+ 		{
+ 			mListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE_MODAL);
+ 			mListView.setMultiChoiceModeListener(mVpnProfileSelected);
+ 		}
++		if (mReadOnly || StrongSwanApplication.isManualDisabled()) {
++			mListView.setOnItemClickListener(null);
++		}
+ 		return view;
+ 	}
+ 
+@@ -104,7 +108,7 @@ public class VpnProfileListFragment extends Fragment
+ 			mReadOnly = args.getBoolean("read_only", mReadOnly);
+ 		}
+ 
+-		if (!mReadOnly)
++		if (!mReadOnly && !StrongSwanApplication.isUIDisabled())
+ 		{
+ 			setHasOptionsMenu(true);
+ 		}
+diff --git a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnStateFragment.java b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnStateFragment.java
+index 0b093d7..d338c43 100644
+--- a/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnStateFragment.java
++++ b/src/frontends/android/app/src/main/java/org/strongswan/android/ui/VpnStateFragment.java
+@@ -38,6 +38,7 @@ import android.widget.TextView;
+ 
+ import org.strongswan.android.R;
+ import org.strongswan.android.data.VpnProfile;
++import org.strongswan.android.logic.StrongSwanApplication;
+ import org.strongswan.android.logic.VpnStateService;
+ import org.strongswan.android.logic.VpnStateService.ErrorState;
+ import org.strongswan.android.logic.VpnStateService.State;
+@@ -297,7 +298,12 @@ public class VpnStateFragment extends Fragment implements VpnStateListener
+ 	private void enableActionButton(String text)
+ 	{
+ 		mActionButton.setText(text);
+-		mActionButton.setEnabled(text != null);
++		if (StrongSwanApplication.isUIDisabled() && StrongSwanApplication.isManualDisabled()) {
++			mActionButton.setEnabled(false);
++		}
++		else {
++			mActionButton.setEnabled(text != null);
++		}
+ 		mActionButton.setVisibility(text != null ? View.VISIBLE : View.GONE);
+ 	}
+ 
+diff --git a/src/frontends/android/app/src/main/jni/Application.mk b/src/frontends/android/app/src/main/jni/Application.mk
+index 25b1aa2..126c567 100644
+--- a/src/frontends/android/app/src/main/jni/Application.mk
++++ b/src/frontends/android/app/src/main/jni/Application.mk
+@@ -1,3 +1,4 @@
+ # select the ABI(s) to build for (see CPU-ARCH-ABIS.html in the NDK docs).
+-APP_ABI := armeabi arm64-v8a x86 x86_64 mips mips64
++# APP_ABI := armeabi arm64-v8a x86 x86_64 mips mips64
++APP_ABI := armeabi
+ APP_PLATFORM := android-19
+diff --git a/src/frontends/android/app/src/main/res/drawable-hdpi/ic_launcher.png b/src/frontends/android/app/src/main/res/drawable-hdpi/ic_launcher.png
+index 7cd1df4ee1eb4e4f80ecc5afc16b3e8f9ecd95e2..eef49e23d6e4ebcc69df7dcc3eea3defa45ff0f8 100644
+GIT binary patch
+delta 1264
+zcmV<M1P}Y!Ciw}F8Gi!+003e$Lv;WE0hLfpR7C&)0Jk70i5MQJ9VD0<A*>!HqZ}ik
+z93z|?BB2~3wI3(29ww0)ACwv(ix?iYA18|#9<(1Pj2Iq`86UDACyW>#ix?iaASj9$
+z9<(1Pj2IrZASa3#9<v`OjTs-dASjR-AC4IxiWnZYASkpSCx5XYCy*H*w;(99A199)
+zAF>}Ow;(8t7#{!s|C1UZvL7d{9wwk1Bd{MPkQpDN93zeyAF3WDwjd~r7#^D&B8?dz
+zv>zv(8zPn(A*LN9nHwRe9VM3<A&eLwu~S+3@$tV_T<FKiyjEMeR9UuES@h-Q?$+1c
+zs;%0otH5t_`+xNH$A5#kNl*Rz{NlgB;kdfWg^0stYOpy!t12;`CocT<_v_Bk<hZ)u
+zx4P7toz8%S#(aRob$P{ccDi9^tU^eoF*u(hDgOQa_wDZW=;-p@-tgSr?%3JkyS?AD
+zwb6-;y=QE`V`#HQOQ|?MrZ_&ZGC86wGUdd^)}*J+jen84W^1)tUb#+FrZqeA-{9J-
+zuF#H=&yJDNjE~NOhPYQ;r#(WgHauizk-Go@04;P<PE!ECzrVk~zrVi_@4vsl?_gjs
+zFz?^bpO24#a8OVnAm88L-_Oslub-cQa8OWyzS+qD00QPoL_t(o!|m5;Q`$fn!13)}
+z)T;Hqdw<{ETD4ZONT6V(1Omz}$}Qd(2;RNh&)sJ?fCM@Wo8(11!~dN-lb^duHVLTM
+z-To)d&<)x(shhN0wA-}nQg@&h=;@0NB(JS&baZrleEco+o@6qaj7H--(iq8LFz6wU
+z<ILvS+1WRwiHV8H$p`Ia%<yAi6hf0T-6N${HGh3j1I=`HlpJ-?$5u&tG^G}r?j}zE
+zlzM1-0HAwXKo1dmHKheKJ%oB|L&1cXw_15`B3~QoLsx1+0S7MS%+`Xg)`X%~T$WW-
+z3Q5!9zaAWX<E2R{gQ(*ONGCh%q>>USL003xylMwzogzCFu!6Hte)%(G<d7Aj3-inG
+zqkkk>94i!rgO)3A$Q2k2F+x!|CQu1wVbIM8@nk|35S`KyBLx3DS`E43bhAVA)sO{-
+z*`PT%B3KQDVA#S8{p~T*fHa2YpeVWgG#lwtA#(ZM7N{-=*HHudZ=j{!SUj?&7~1ms
+zL@^cy$4y?4haP2+{m1Vyk`H4cO(5=A5q~6{7q-Ygm?;XK?M6Jz(C18XudUiK-dWXi
+z`lQ8jy21)sZI_$Y4Syf4a{9P^eUW)--^+G?Is(UgLmU@lKS$x9>@kvXVeEr<|1m4H
+zZmW16i7vbW@BWmF5pq;L*uIb{nL}G_(3&40TDl0GVC><{X`T(*4pPV#_k`U)DSu>G
+zfm;A(B(OnyMt}ki7lvHk6hKM1ZZXb$vCaf-<^Y=C#DzAK7yBD9%{*roneL+{KYZ2Z
+z1YBxydkscUVUKt)10?w2tJdVi@`QbG#I^b%`(DljP{t)=Hhi$xxL<Z$KeQ};XYXNI
+zPV(iS;xRiEkwZIreLil-ED(RbKxx{QL&Dif_#b=tHz0+-X|;!*X#@43Hf^AGq-)Xw
+zYSkgss|D1D5KKuu1QUV=)k8yw)}|I}M}-EP)IgoDQ7PSX<xr0fl{fsdxr-gT-!d>#
+a0R8~V=nCyB8%fOo0000<MNUMnLSTY1W>HrF
+
+literal 4953
+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
+XMM3h_M>*|U00000NkvXXu0mjf7G+RJ
+
+diff --git a/src/frontends/android/app/src/main/res/drawable-mdpi/ic_launcher.png b/src/frontends/android/app/src/main/res/drawable-mdpi/ic_launcher.png
+index 200ee9677c7313d44bcdfe01c1e7a270cdfe0dca..eef49e23d6e4ebcc69df7dcc3eea3defa45ff0f8 100644
+GIT binary patch
+literal 1273
+zcmV<V1P1$wP)<h;3K|Lk000e1NJLTq002k;002k`0{{R3VlzW^0004%P)t-s0002D
+zASj6#9;h88m>MCh9wnn3BcL23oEsvc93!<KC$JtSkr^M98X$`p9<?7Qix?iXA190$
+z9*r3vvL7dm7#@ol9=9MUiWnZWA190$9<?ARiWnZVA193&AGRPUkQpD286S!m9=0GT
+zv>zw2A19C*AGaVVvmYmq86UDAC$}Idj2IsO|NoO3AhI7PtsW+z93!wFCXg8)qZ}iS
+z86T=1CAJ_aix?i88zPMvAG9AQof{&S8X=|~B$*o_ryV7i8X=4rAF)$e`SJ0;R$S=E
+z$-Guuxl~!UR9W=p<?hzk-KwqHsjI+mbNlr5$A5#kNl*Rz{NlgB;kdfWg^0stYOpy!
+zt12;`CocT<_v_Bk<hZ)ux4P7toz8%S#(aRob$P{ccDi9^tU^eoF*u(hDgOQa_wDZW
+z=;-p@-tgSr?%3JkyS?ADwb6-;y=QE`V`#HQOQ|?MrZ_&ZGC86wGUdd^)}*J+jgh)$
+zYqeTlxlU82H9PX(;M%LM(2kMMj*-!fkIsUIxK~`KJwmNEJY;5(y8r+HEp$>&Qvkoe
+zzrVk~zrPUgzrVllU|=vX@88d#kB@+GP*5Ns-{0Tg&(E)~pPztmP*8xr*~tI^0_I6X
+zK~z}7?bm5j+CUh<@$FsIs`b8m-`!fZR<TH+V59^B$}P$*-WLeoz1z>-XE%TZIt-iS
+zMLWa)oja4CyGb?)sMy{9C(Y0e+BK=0v|F^>wChrLpcd%qiw-2Ot!s32bbNgLE%csb
+zGMS7<<2%wA$zU+(A&%qB=GocVH>8P)iOI<a?PbjHV_+0QlQZ2TrByY3Py@|$c9a}-
+z(8pFudNidLn(ih}|CD-YdH|q%T0jpGdNrj5G(CiRYeT_=m$zDZZz5kC>O)s*K>-IY
+z<;>QCuGWO2R$P`<R0>Jc;lCaneB-4_DTAov2uLS8>!gwrC_z@^zr1P(WSt^A6tIG`
+zP=5I{WaN+)q6_oO@1rDH94i!rgO)3A$Q2k2F+x!|CQu1wVbIM8@nk|35S`KyBLx3D
+zS`E43bhAVA)sO{-*`PT%B3KQDVA#S8{p~T*fHa2YpeVWgG#lwtA#(ZM7N{-=*HHud
+zZ=j{!SUj?&7~1msL@^cy$4y?4haP2+{m1Vyk`H4cO(5=A5hR=!w#Yu1DGHtKMm)^W
+z=S*?0t=ci(S=Dp;q{VW&!U|b!mz&lNe;=)K`nY|4k$Gv~%XWV{0>^tp92a9hN8zCC
+zF_Lg$?1OjzF)Orgt9TxXF1!Kn{*;Rma#TIozK|)ILtAXnnjauqx(J<M?BUF5o(<X#
+zQpgtfgxx<WWLSY)0A?hxL3>7k0uC33T;3EwNw{t?&U~@X1a0O3n%~5QHj@|o8!*j0
+zXBL_6qa{Cl)#e0TYH@oFMo(dncrXJb_~EP8<izrXeQ?CJ`XT#X&IC}#C1W;xu-CX>
+zc3eNSEPZG1VOdV{<)7j)I~0*aJ9>RSZpSPTf4)H4l|#bWN%$Xo_%|ShziG9Ho@oR1
+zpf+uwcBE_40&3ME)T;&5hY(CjJp>bi2Gv7Dh}NbSYDa|zo76y^uTd%8bLCKv4wX0j
+jvbl>Ly5BM|QULw{%IFI1DjP}700000NkvXXu0mjftz1n)
+
+literal 3149
+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
+
+diff --git a/src/frontends/android/app/src/main/res/drawable-xhdpi/ic_launcher.png b/src/frontends/android/app/src/main/res/drawable-xhdpi/ic_launcher.png
+index 2eb6db1b6ac4bdd0bf9e56196e8f8195593bd483..eef49e23d6e4ebcc69df7dcc3eea3defa45ff0f8 100644
+GIT binary patch
+literal 1273
+zcmV<V1P1$wP)<h;3K|Lk000e1NJLTq002k;002k`0{{R3VlzW^0004%P)t-s0002D
+zASj6#9;h88m>MCh9wnn3BcL23oEsvc93!<KC$JtSkr^M98X$`p9<?7Qix?iXA190$
+z9*r3vvL7dm7#@ol9=9MUiWnZWA190$9<?ARiWnZVA193&AGRPUkQpD286S!m9=0GT
+zv>zw2A19C*AGaVVvmYmq86UDAC$}Idj2IsO|NoO3AhI7PtsW+z93!wFCXg8)qZ}iS
+z86T=1CAJ_aix?i88zPMvAG9AQof{&S8X=|~B$*o_ryV7i8X=4rAF)$e`SJ0;R$S=E
+z$-Guuxl~!UR9W=p<?hzk-KwqHsjI+mbNlr5$A5#kNl*Rz{NlgB;kdfWg^0stYOpy!
+zt12;`CocT<_v_Bk<hZ)ux4P7toz8%S#(aRob$P{ccDi9^tU^eoF*u(hDgOQa_wDZW
+z=;-p@-tgSr?%3JkyS?ADwb6-;y=QE`V`#HQOQ|?MrZ_&ZGC86wGUdd^)}*J+jgh)$
+zYqeTlxlU82H9PX(;M%LM(2kMMj*-!fkIsUIxK~`KJwmNEJY;5(y8r+HEp$>&Qvkoe
+zzrVk~zrPUgzrVllU|=vX@88d#kB@+GP*5Ns-{0Tg&(E)~pPztmP*8xr*~tI^0_I6X
+zK~z}7?bm5j+CUh<@$FsIs`b8m-`!fZR<TH+V59^B$}P$*-WLeoz1z>-XE%TZIt-iS
+zMLWa)oja4CyGb?)sMy{9C(Y0e+BK=0v|F^>wChrLpcd%qiw-2Ot!s32bbNgLE%csb
+zGMS7<<2%wA$zU+(A&%qB=GocVH>8P)iOI<a?PbjHV_+0QlQZ2TrByY3Py@|$c9a}-
+z(8pFudNidLn(ih}|CD-YdH|q%T0jpGdNrj5G(CiRYeT_=m$zDZZz5kC>O)s*K>-IY
+z<;>QCuGWO2R$P`<R0>Jc;lCaneB-4_DTAov2uLS8>!gwrC_z@^zr1P(WSt^A6tIG`
+zP=5I{WaN+)q6_oO@1rDH94i!rgO)3A$Q2k2F+x!|CQu1wVbIM8@nk|35S`KyBLx3D
+zS`E43bhAVA)sO{-*`PT%B3KQDVA#S8{p~T*fHa2YpeVWgG#lwtA#(ZM7N{-=*HHud
+zZ=j{!SUj?&7~1msL@^cy$4y?4haP2+{m1Vyk`H4cO(5=A5hR=!w#Yu1DGHtKMm)^W
+z=S*?0t=ci(S=Dp;q{VW&!U|b!mz&lNe;=)K`nY|4k$Gv~%XWV{0>^tp92a9hN8zCC
+zF_Lg$?1OjzF)Orgt9TxXF1!Kn{*;Rma#TIozK|)ILtAXnnjauqx(J<M?BUF5o(<X#
+zQpgtfgxx<WWLSY)0A?hxL3>7k0uC33T;3EwNw{t?&U~@X1a0O3n%~5QHj@|o8!*j0
+zXBL_6qa{Cl)#e0TYH@oFMo(dncrXJb_~EP8<izrXeQ?CJ`XT#X&IC}#C1W;xu-CX>
+zc3eNSEPZG1VOdV{<)7j)I~0*aJ9>RSZpSPTf4)H4l|#bWN%$Xo_%|ShziG9Ho@oR1
+zpf+uwcBE_40&3ME)T;&5hY(CjJp>bi2Gv7Dh}NbSYDa|zo76y^uTd%8bLCKv4wX0j
+jvbl>Ly5BM|QULw{%IFI1DjP}700000NkvXXu0mjftz1n)
+
+literal 6786
+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
+
+diff --git a/src/frontends/android/app/src/main/res/layout/main.xml b/src/frontends/android/app/src/main/res/layout/main.xml
+index ab03e72..e9332fc 100644
+--- a/src/frontends/android/app/src/main/res/layout/main.xml
++++ b/src/frontends/android/app/src/main/res/layout/main.xml
+@@ -14,6 +14,7 @@
+     for more details.
+ -->
+ <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    xmlns:tools="http://schemas.android.com/tools"
+     android:layout_width="match_parent"
+     android:layout_height="match_parent"
+     android:orientation="vertical" >
+@@ -35,6 +36,7 @@
+             android:id="@+id/profile_list_frag"
+             android:layout_width="match_parent"
+             android:layout_height="0dp"
+-            android:layout_weight="1" />
++            android:layout_weight="1"
++        tools:layout="@layout/profile_list_fragment" />
+ 
+ </LinearLayout>
+diff --git a/src/frontends/android/app/src/main/res/menu/main.xml b/src/frontends/android/app/src/main/res/menu/main.xml
+index 599254a..772db41 100644
+--- a/src/frontends/android/app/src/main/res/menu/main.xml
++++ b/src/frontends/android/app/src/main/res/menu/main.xml
+@@ -26,4 +26,9 @@
+         android:title="@string/show_log"
+         app:showAsAction="withText" />
+ 
++    <item
++        android:id="@+id/menu_about"
++        android:title="@string/about"
++        app:showAsAction="withText" />
++
+ </menu>
+diff --git a/src/frontends/android/app/src/main/res/values-de/names.xml b/src/frontends/android/app/src/main/res/values-de/names.xml
+new file mode 100644
+index 0000000..644057e
+--- /dev/null
++++ b/src/frontends/android/app/src/main/res/values-de/names.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">Intact VPN</string>
++    <string name="main_activity_name">Intact VPN</string>
++</resources>
+diff --git a/src/frontends/android/app/src/main/res/values-de/strings.xml b/src/frontends/android/app/src/main/res/values-de/strings.xml
+index 857a18a..e1a28e5 100644
+--- a/src/frontends/android/app/src/main/res/values-de/strings.xml
++++ b/src/frontends/android/app/src/main/res/values-de/strings.xml
+@@ -18,8 +18,6 @@
+ <resources>
+ 
+     <!-- Application -->
+-    <string name="app_name">strongSwan VPN Client</string>
+-    <string name="main_activity_name">strongSwan</string>
+     <string name="show_log">Log anzeigen</string>
+     <string name="search">Suchen</string>
+     <string name="vpn_not_supported_title">VPN nicht unterstützt</string>
+@@ -28,6 +26,7 @@
+     <string name="loading">Laden&#8230;</string>
+     <string name="profile_not_found">Profil nicht gefunden</string>
+     <string name="strongswan_shortcut">strongSwan-Verknüpfung</string>
++    <string name="about">Etwa</string>
+ 
+     <!-- Log view -->
+     <string name="log_title">Log</string>
+@@ -141,4 +140,5 @@
+     <string name="replaces_active_connection">Dies ersetzt die aktuelle VPN Verbindung!</string>
+     <string name="connect">Verbinden</string>
+ 
++    <string name="about_message">Based on the StrongSwan VPN client\r\nhttps://github.com/strongswan/strongswan</string>
+ </resources>
+diff --git a/src/frontends/android/app/src/main/res/values-pl/names.xml b/src/frontends/android/app/src/main/res/values-pl/names.xml
+new file mode 100644
+index 0000000..644057e
+--- /dev/null
++++ b/src/frontends/android/app/src/main/res/values-pl/names.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">Intact VPN</string>
++    <string name="main_activity_name">Intact VPN</string>
++</resources>
+diff --git a/src/frontends/android/app/src/main/res/values-pl/strings.xml b/src/frontends/android/app/src/main/res/values-pl/strings.xml
+index df44122..5ead6ed 100644
+--- a/src/frontends/android/app/src/main/res/values-pl/strings.xml
++++ b/src/frontends/android/app/src/main/res/values-pl/strings.xml
+@@ -18,8 +18,6 @@
+ <resources>
+ 
+     <!-- Application -->
+-    <string name="app_name">strongSwan klient VPN</string>
+-    <string name="main_activity_name">strongSwan</string>
+     <string name="show_log">Pokaż log</string>
+     <string name="search">Szukaj</string>
+     <string name="vpn_not_supported_title">Nie obsługiwany VPN</string>
+@@ -28,6 +26,7 @@
+     <string name="loading">Wczytywanie&#8230;</string>
+     <string name="profile_not_found">Nie znaleziono profilu</string>
+     <string name="strongswan_shortcut">Skrót strongSwan</string>
++    <string name="about">o</string>
+ 
+     <!-- Log view -->
+     <string name="log_title">Log</string>
+@@ -141,4 +140,5 @@
+     <string name="replaces_active_connection">To zastąpi aktywne połączenie VPN!</string>
+     <string name="connect">Połącz</string>
+ 
++    <string name="about_message">Based on the StrongSwan VPN client\r\nhttps://github.com/strongswan/strongswan</string>
+ </resources>
+diff --git a/src/frontends/android/app/src/main/res/values-ru/names.xml b/src/frontends/android/app/src/main/res/values-ru/names.xml
+new file mode 100644
+index 0000000..644057e
+--- /dev/null
++++ b/src/frontends/android/app/src/main/res/values-ru/names.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">Intact VPN</string>
++    <string name="main_activity_name">Intact VPN</string>
++</resources>
+diff --git a/src/frontends/android/app/src/main/res/values-ru/strings.xml b/src/frontends/android/app/src/main/res/values-ru/strings.xml
+index 933b2fb..a0def7d 100644
+--- a/src/frontends/android/app/src/main/res/values-ru/strings.xml
++++ b/src/frontends/android/app/src/main/res/values-ru/strings.xml
+@@ -15,8 +15,6 @@
+ <resources>
+ 
+     <!-- Application -->
+-    <string name="app_name">Клиент strongSwan VPN</string>
+-    <string name="main_activity_name">strongSwan</string>
+     <string name="show_log">Журнал</string>
+     <string name="search">Поиск</string>
+     <string name="vpn_not_supported_title">VPN не поддерживается</string>
+@@ -25,6 +23,7 @@
+     <string name="loading">Загрузка&#8230;</string>
+     <string name="profile_not_found">Профиль не найден</string>
+     <string name="strongswan_shortcut">Ссылка на strongSwan</string>
++    <string name="about">около</string>
+ 
+     <!-- Log view -->
+     <string name="log_title">Журнал</string>
+@@ -138,4 +137,5 @@
+     <string name="replaces_active_connection">Это заменит ваше текущее VPN соединение!</string>
+     <string name="connect">Соединить</string>
+ 
++    <string name="about_message">Based on the StrongSwan VPN client\r\nhttps://github.com/strongswan/strongswan</string>
+ </resources>
+diff --git a/src/frontends/android/app/src/main/res/values-ua/names.xml b/src/frontends/android/app/src/main/res/values-ua/names.xml
+new file mode 100644
+index 0000000..644057e
+--- /dev/null
++++ b/src/frontends/android/app/src/main/res/values-ua/names.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">Intact VPN</string>
++    <string name="main_activity_name">Intact VPN</string>
++</resources>
+diff --git a/src/frontends/android/app/src/main/res/values-ua/strings.xml b/src/frontends/android/app/src/main/res/values-ua/strings.xml
+index e48a921..b1029cf 100644
+--- a/src/frontends/android/app/src/main/res/values-ua/strings.xml
++++ b/src/frontends/android/app/src/main/res/values-ua/strings.xml
+@@ -16,8 +16,6 @@
+ <resources>
+ 
+     <!-- Application -->
+-    <string name="app_name">strongSwan VPN клієнт</string>
+-    <string name="main_activity_name">strongSwan</string>
+     <string name="show_log">Перегляд журналу</string>
+     <string name="search">Пошук</string>
+     <string name="vpn_not_supported_title">VPN не підтримуеться</string>
+@@ -26,6 +24,7 @@
+     <string name="loading">Завантаження&#8230;</string>
+     <string name="profile_not_found">Профіль не знайдено</string>
+     <string name="strongswan_shortcut">strongSwan посилання</string>
++    <string name="about">про</string>
+ 
+     <!-- Log view -->
+     <string name="log_title">Журнал</string>
+@@ -139,4 +138,5 @@
+     <string name="replaces_active_connection">Ця дія замінить ваше поточне VPN з\'єднання!</string>
+     <string name="connect">Підключити</string>
+ 
++    <string name="about_message">Based on the StrongSwan VPN client\r\nhttps://github.com/strongswan/strongswan</string>
+ </resources>
+diff --git a/src/frontends/android/app/src/main/res/values/colors.xml b/src/frontends/android/app/src/main/res/values/colors.xml
+index f29ae19..995d3c3 100644
+--- a/src/frontends/android/app/src/main/res/values/colors.xml
++++ b/src/frontends/android/app/src/main/res/values/colors.xml
+@@ -19,7 +19,7 @@
+         name="accent">#96BDC2</color>
+ 
+     <color
+-        name="primary">#A2042C</color>
++        name="primary">#016AC3</color>
+ 
+     <color
+         name="primary_dark">#000000</color>
+@@ -34,7 +34,7 @@
+         name="success_text">#99CC00</color>
+ 
+     <color
+-        name="panel_background">#444444</color>
++        name="panel_background">#1D96FF</color>
+ 
+     <color
+         name="panel_separator">#5a5a5a</color>
+diff --git a/src/frontends/android/app/src/main/res/values/names.xml b/src/frontends/android/app/src/main/res/values/names.xml
+new file mode 100644
+index 0000000..644057e
+--- /dev/null
++++ b/src/frontends/android/app/src/main/res/values/names.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="app_name">Intact VPN</string>
++    <string name="main_activity_name">Intact VPN</string>
++</resources>
+diff --git a/src/frontends/android/app/src/main/res/values/strings.xml b/src/frontends/android/app/src/main/res/values/strings.xml
+index 0ceace1..037b532 100644
+--- a/src/frontends/android/app/src/main/res/values/strings.xml
++++ b/src/frontends/android/app/src/main/res/values/strings.xml
+@@ -18,8 +18,6 @@
+ <resources>
+ 
+     <!-- Application -->
+-    <string name="app_name">strongSwan VPN Client</string>
+-    <string name="main_activity_name">strongSwan</string>
+     <string name="show_log">View log</string>
+     <string name="search">Search</string>
+     <string name="vpn_not_supported_title">VPN not supported</string>
+@@ -28,6 +26,7 @@
+     <string name="loading">Loading&#8230;</string>
+     <string name="profile_not_found">Profile not found</string>
+     <string name="strongswan_shortcut">strongSwan shortcut</string>
++    <string name="about">About</string>
+ 
+     <!-- Log view -->
+     <string name="log_title">Log</string>
+@@ -141,4 +140,5 @@
+     <string name="replaces_active_connection">This will replace your active VPN connection!</string>
+     <string name="connect">Connect</string>
+ 
++    <string name="about_message">Based on the StrongSwan VPN client\r\nhttps://github.com/strongswan/strongswan</string>
+ </resources>
+diff --git a/src/frontends/android/build.gradle b/src/frontends/android/build.gradle
+index 33b908c..3d5ba79 100644
+--- a/src/frontends/android/build.gradle
++++ b/src/frontends/android/build.gradle
+@@ -3,7 +3,7 @@ buildscript {
+         jcenter()
+     }
+     dependencies {
+-        classpath 'com.android.tools.build:gradle:2.1.2'
++        classpath 'com.android.tools.build:gradle:2.2.3'
+     }
+ }
+ 
+diff --git a/src/frontends/android/gradle/wrapper/gradle-wrapper.properties b/src/frontends/android/gradle/wrapper/gradle-wrapper.properties
+index 3389226..9afd030 100644
+--- a/src/frontends/android/gradle/wrapper/gradle-wrapper.properties
++++ b/src/frontends/android/gradle/wrapper/gradle-wrapper.properties
+@@ -1,6 +1,6 @@
+-#Wed Apr 13 11:22:32 CEST 2016
++#Thu Oct 13 10:06:32 IDT 2016
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-2.10-all.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-2.14.1-all.zip
+diff --git a/src/libstrongswan/Android.mk b/src/libstrongswan/Android.mk
+index 0e8f7f3..eee74ce 100644
+--- a/src/libstrongswan/Android.mk
++++ b/src/libstrongswan/Android.mk
+@@ -128,6 +128,6 @@ LOCAL_ARM_MODE := arm
+ 
+ LOCAL_PRELINK_MODULE := false
+ 
+-LOCAL_SHARED_LIBRARIES += libdl
++#LOCAL_SHARED_LIBRARIES += libdl
+ 
+ include $(BUILD_SHARED_LIBRARY)
+diff --git a/src/libtnccs/Android.mk b/src/libtnccs/Android.mk
+index e379732..a7868ee 100644
+--- a/src/libtnccs/Android.mk
++++ b/src/libtnccs/Android.mk
+@@ -16,7 +16,7 @@ LOCAL_SRC_FILES := $(filter %.c,$(libtnccs_la_SOURCES))
+ 
+ LOCAL_SRC_FILES += $(call add_plugin, tnc-imc)
+ ifneq ($(call plugin_enabled, tnc-imc),)
+-LOCAL_SHARED_LIBRARIES += libdl
++#LOCAL_SHARED_LIBRARIES += libdl
+ endif
+ 
+ LOCAL_SRC_FILES += $(call add_plugin, tnc-tnccs)
+-- 
+1.9.1
+
